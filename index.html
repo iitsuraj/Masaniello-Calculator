@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Masaniello Calculator</title>
+    <script src="https://cdn.tailwindcss.com/3.4.5"></script>
+</head>
+
+<body class="bg-gray-100">
+
+    <!-- Form Section -->
+    <div id="formSection" class="max-w-4xl mx-auto py-10 px-4 sm:px-6 lg:px-8">
+        <h1 class="text-4xl font-bold text-center text-gray-800 mb-10">Masaniello Calculator</h1>
+
+        <div class="bg-white shadow-md rounded-lg p-6">
+            <div class="mb-6">
+                <label for="balance" class="block text-sm font-medium text-gray-700">Balance:</label>
+                <input type="number" id="balance" placeholder="Enter your balance"
+                    class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" />
+            </div>
+
+            <div class="mb-6">
+                <label for="payout" class="block text-sm font-medium text-gray-700">Payout (e.g., 2.0):</label>
+                <input type="number" id="payout" placeholder="Enter payout" step="0.01"
+                    class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" />
+            </div>
+
+            <div class="mb-6">
+                <label for="totalTrades" class="block text-sm font-medium text-gray-700">Total Trades/Events:</label>
+                <input type="number" id="totalTrades" placeholder="Enter total trades/events"
+                    class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" />
+            </div>
+
+            <div class="mb-6">
+                <label for="totalWins" class="block text-sm font-medium text-gray-700">Total Wins Expected:</label>
+                <input type="number" id="totalWins" placeholder="Enter expected wins"
+                    class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" />
+            </div>
+
+            <button onclick="startCalculation()"
+                class="w-full bg-indigo-600 text-white py-2 px-4 rounded-md text-center font-medium hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                Start Calculation
+            </button>
+        </div>
+    </div>
+
+    <!-- Result Section (Initially Hidden) -->
+    <div id="resultSection" class="hidden max-w-4xl mx-auto py-10 px-4 sm:px-6 lg:px-8">
+        <div class="flex justify-between mb-6">
+            <button onclick="goBackToForm()"
+                class="bg-gray-500 text-white py-2 px-4 rounded-md text-center font-medium hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-gray-500">
+                Back
+            </button>
+        </div>
+
+        <!-- Display current balance, win/loss buttons -->
+        <div class="bg-white shadow-md rounded-lg p-6 mb-6">
+            <p class="text-lg font-semibold text-gray-800 mb-2"><strong>Current Balance:</strong> <span
+                    id="currentBalance">0</span></p>
+            <div class="flex justify-between mt-6">
+                <button onclick="updateStatus('win')"
+                    class="w-5/12 bg-green-500 text-white py-2 px-4 rounded-md text-center font-medium hover:bg-green-600 focus:outline-none focus:ring-2 focus:ring-green-500">
+                    Add Win
+                </button>
+                <button onclick="updateStatus('loss')"
+                    class="w-5/12 bg-red-500 text-white py-2 px-4 rounded-md text-center font-medium hover:bg-red-600 focus:outline-none focus:ring-2 focus:ring-red-500">
+                    Add Loss
+                </button>
+            </div>
+        </div>
+
+        <!-- Results Table -->
+        <div>
+            <h2 class="text-xl font-bold text-gray-800 mb-4">Results Table</h2>
+            <table id="resultTable" class="min-w-full bg-white border border-gray-300 shadow-md rounded-lg">
+                <thead>
+                    <tr class="bg-gray-200 text-gray-600 uppercase text-sm leading-normal">
+                        <th class="py-2 px-4 text-left">No.</th>
+                        <th class="py-2 px-4 text-left">Result</th>
+                        <th class="py-2 px-4 text-left">Lot Amount</th>
+                        <th class="py-2 px-4 text-left">After Event Balance</th>
+                    </tr>
+                </thead>
+                <tbody id="resultTableBody" class="text-gray-700 text-sm">
+                    <!-- Table rows will be added dynamically here -->
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <script>
+        let totalTrade = 0;
+        let totalWinExpected = 0;
+        let win = 0;
+        let index = 0;
+        let payout = 0;
+        let balance = 0;
+        let quote = [];
+        let mat = [];
+        let currentLot = 0;
+
+        function startCalculation() {
+            totalTrade = 0;
+            win = 0;
+            index = 0;
+            currentLot = 0;
+            // Get user inputs
+            balance = parseFloat(document.getElementById('balance').value);
+            payout = parseFloat(document.getElementById('payout').value);
+            totalTrade = parseInt(document.getElementById('totalTrades').value);
+            totalWinExpected = parseInt(document.getElementById('totalWins').value);
+
+            // Initialize the matrix and calculate the first lot
+            quote = new Array(totalTrade).fill(payout);
+            mat = Array(totalTrade).fill(null).map(() => Array(totalWinExpected + 1).fill(0));
+            calculateMatrix(totalTrade, totalWinExpected);
+            currentLot = getLot();
+
+            // Update UI with current values
+            updateDisplay();
+            document.getElementById('currentBalance').innerText = balance.toFixed(2);
+
+            // Show results section and hide form
+            document.getElementById('formSection').classList.add('hidden');
+            document.getElementById('resultSection').classList.remove('hidden');
+
+            const tableBody = document.getElementById('resultTableBody');
+
+            tableBody.innerHTML = ``;
+
+            // tableBody.appendChild(row);
+
+            // Initialize table with first row showing the initial lot
+            addTableRow(index + 1, '-', currentLot.toFixed(2), '-');
+        }
+
+        function calculateMatrix(n, k) {
+            for (let num = n - 1; num >= 0; num--) {
+                for (let num2 = k; num2 >= 0; num2--) {
+                    if (num2 === k) {
+                        mat[num][num2] = 1.0;
+                    } else if (num > n - k + num2) {
+                        mat[num][num2] = 0.0;
+                    } else if (num === n - k + num2) {
+                        mat[num][num2] = quote[num] * (num === n - 1 ? 1 : mat[num + 1][num2 + 1]);
+                    } else {
+                        mat[num][num2] = quote[num] * mat[num + 1][num2] * mat[num + 1][num2 + 1] /
+                            (mat[num + 1][num2] + (quote[num] - 1.0) * mat[num + 1][num2 + 1]);
+                    }
+                }
+            }
+        }
+
+        function getLot() {
+            if (totalWinExpected - win === 0) return 0;
+            if (totalTrade - index < totalWinExpected - win) return 0;
+            if (totalTrade - index === totalWinExpected - win) return balance;
+
+            return balance * (1 - quote[index] * mat[index + 1][win + 1] /
+                (mat[index + 1][win] + (quote[index] - 1.0) * mat[index + 1][win + 1]));
+        }
+
+        function updateStatus(result) {
+            if (balance <= 0) return;
+
+            let previousBalance = balance;
+            if (result === 'win') {
+                win++;
+                balance += currentLot;
+            } else if (result === 'loss') {
+                balance -= currentLot;
+            }
+
+            index++;
+            if (index >= totalTrade || win >= totalWinExpected) {
+                reset();
+            } else {
+                currentLot = getLot();
+            }
+
+            // Update UI
+            updateDisplay();
+            editTableRow(result, balance.toFixed(2));
+            addTableRow(index + 1, '-', currentLot.toFixed(2), '-');
+        }
+
+        function reset() {
+            win = 0;
+            index = 0;
+            currentLot = getLot();
+            updateDisplay();
+        }
+
+        function goBackToForm() {
+            // Show form section and hide result section
+            document.getElementById('formSection').classList.remove('hidden');
+            document.getElementById('resultSection').classList.add('hidden');
+        }
+
+        function updateDisplay() {
+            document.getElementById('currentBalance').innerText = balance.toFixed(2);
+        }
+
+        function editTableRow(result, afterBalance) {
+            const tableBody = document.getElementById('resultTableBody');
+            const row = tableBody.querySelector('tr:last-child');
+            const lotAmount = row.querySelectorAll('td')[2].innerText;
+            const tradeNumber = row.querySelectorAll('td')[0].innerText;
+            row.innerHTML = `
+                <td class="py-2 px-4 border-b border-gray-300">${tradeNumber}</td>
+                <td class="py-2 px-4 border-b border-gray-300">${result}</td>
+                <td class="py-2 px-4 border-b border-gray-300">${lotAmount}</td>
+                <td class="py-2 px-4 border-b border-gray-300">${afterBalance}</td>
+            `;
+
+            tableBody.appendChild(row);
+        }
+
+        function addTableRow(tradeNumber, result, lotAmount, afterBalance) {
+            const tableBody = document.getElementById('resultTableBody');
+            const row = document.createElement('tr');
+
+            row.innerHTML = `
+                <td class="py-2 px-4 border-b border-gray-300">${tradeNumber}</td>
+                <td class="py-2 px-4 border-b border-gray-300">${result}</td>
+                <td class="py-2 px-4 border-b border-gray-300">${lotAmount}</td>
+                <td class="py-2 px-4 border-b border-gray-300">${afterBalance}</td>
+            `;
+
+            tableBody.appendChild(row);
+        }
+    </script>
+
+</body>
+
+</html>
