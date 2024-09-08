@@ -1,15 +1,17 @@
 {
-  "theme_color": "#000000",
-  "background_color": "#000000",
-  "orientation": "any",
-  "display": "standalone",
   "dir": "ltr",
   "lang": "en-IN",
   "name": "Masaniello Calculator",
-  "short_name": "M_Calculator",
+  "display": "standalone",
   "start_url": "/",
-  "id": "masaniello_calculator",
+  "short_name": "M_Calculator",
+  "theme_color": "#FFFFFF",
   "description": "https://iitsuraj.github.io/Masaniello-Calculator/",
+  "orientation": "any",
+  "background_color": "#FFFFFF",
+  "id": "masaniello_calculator",
+  "related_applications": [],
+  "prefer_related_applications": false,
   "icons": [
     {
       "src": "/AppImages/android/android-launchericon-512-512.png",
