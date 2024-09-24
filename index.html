@@ -17,6 +17,14 @@
 
         <div class="bg-white shadow-md rounded-lg p-6">
             <div class="mb-6">
+                <label for="selection" class="block text-sm font-medium text-gray-700">Calculation Type:</label>
+                <select id="selection"
+                    class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
+                    <option value="normal" selected>Normal</option>
+                    <option value="progressive">Progressive</option>
+                </select>
+            </div>
+            <div class="mb-6">
                 <label for="balance" class="block text-sm font-medium text-gray-700">Balance:</label>
                 <input type="number" id="balance" placeholder="Enter your balance"
                     class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
@@ -96,29 +104,33 @@
     </div>
 
     <script>
+        let calculatorNormal = true;
         let totalTrade = 0;
         let totalWinExpected = 0;
         let win = 0;
         let index = 0;
         let payout = 0;
         let balance = 0;
-        let quote = [];
+        let maxBalance = 0;
+        let quote = 2;
         let mat = [];
         let currentLot = 0;
 
         function startCalculation() {
+            calculatorNormal = document.getElementById('selection').value === "normal" ? true : false;
             totalTrade = 0;
             win = 0;
             index = 0;
             currentLot = 0;
             // Get user inputs
             balance = parseFloat(document.getElementById('balance').value);
+            maxBalance = balance;
             payout = parseFloat(document.getElementById('payout').value);
             totalTrade = parseInt(document.getElementById('totalTrades').value);
             totalWinExpected = parseInt(document.getElementById('totalWins').value);
 
             // Initialize the matrix and calculate the first lot
-            quote = new Array(totalTrade).fill(payout);
+            quote = payout;
             mat = Array(totalTrade).fill(null).map(() => Array(totalWinExpected + 1).fill(0));
             calculateMatrix(totalTrade, totalWinExpected);
             currentLot = getLot();
@@ -149,10 +161,10 @@
                     } else if (num > n - k + num2) {
                         mat[num][num2] = 0.0;
                     } else if (num === n - k + num2) {
-                        mat[num][num2] = quote[num] * (num === n - 1 ? 1 : mat[num + 1][num2 + 1]);
+                        mat[num][num2] = quote * (num === n - 1 ? 1 : mat[num + 1][num2 + 1]);
                     } else {
-                        mat[num][num2] = quote[num] * mat[num + 1][num2] * mat[num + 1][num2 + 1] /
-                            (mat[num + 1][num2] + (quote[num] - 1.0) * mat[num + 1][num2 + 1]);
+                        mat[num][num2] = quote * mat[num + 1][num2] * mat[num + 1][num2 + 1] /
+                            (mat[num + 1][num2] + (quote - 1.0) * mat[num + 1][num2 + 1]);
                     }
                 }
             }
@@ -163,11 +175,19 @@
             if (totalTrade - index < totalWinExpected - win) return 0;
             if (totalTrade - index === totalWinExpected - win) return balance;
 
-            return balance * (1 - quote[index] * mat[index + 1][win + 1] /
-                (mat[index + 1][win] + (quote[index] - 1.0) * mat[index + 1][win + 1]));
+            return balance * (1 - quote * mat[index + 1][win + 1] /
+                (mat[index + 1][win] + (quote - 1.0) * mat[index + 1][win + 1]));
         }
 
         function updateStatus(result) {
+            if (calculatorNormal) {
+                updateStatusNormal(result)
+            } else {
+                updateStatusProgressively(result)
+            }
+        }
+
+        function updateStatusNormal(result) {
             if (balance <= 0) return;
 
             let previousBalance = balance;
@@ -190,6 +210,40 @@
             editTableRow(result, balance.toFixed(2));
             addTableRow(index + 1, '-', currentLot.toFixed(2), '-');
         }
+
+        function updateStatusProgressively(result) {
+            if (balance <= 0) return;
+
+            const isWin = result === 'win';
+            const isLoss = result === 'loss';
+
+            if (isWin) {
+                balance += (payout - 1) * currentLot;
+                win++;
+            } else if (isLoss) {
+                balance -= currentLot;
+            }
+
+            if (balance >= maxBalance) {
+                maxBalance = balance;
+                win = 0;
+                index = 0;
+            } else {
+                index++;
+            }
+
+            if (index >= totalTrade || win >= totalWinExpected) {
+                reset();
+            } else {
+                currentLot = getLot();
+            }
+
+            // Update UI
+            updateDisplay();
+            editTableRow(result, balance.toFixed(2));
+            addTableRow(index + 1, '-', currentLot.toFixed(2), '-');
+        }
+
 
         function reset() {
             win = 0;
